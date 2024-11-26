@@ -1,0 +1,9 @@
+[ {
+	"modid": "hide_key_binding",
+	"name": "Hide Key Binding",
+	"description": "Allow player to hide unused key bindings via configuration.",
+	"url": "https://www.mcmod.cn/class/471769.html",
+	"logoFile": "logo.png",
+	"authorList": [ "Giant_Salted_Fish" ],
+	"credits": "All code contributors."
+} ]
