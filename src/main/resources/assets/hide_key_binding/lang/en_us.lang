@@ -1,3 +1,3 @@
-gui.hkb.config_title=Hide Key Binding
-gui.hkb.show=§aShow
-gui.hkb.hide=§cHide
+hkb.gui.config_title=Hide Key Binding
+hkb.gui.show=§aShow
+hkb.gui.hide=§cHide

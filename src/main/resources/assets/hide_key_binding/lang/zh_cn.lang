@@ -1,3 +1,3 @@
-gui.hkb.config_title=按键绑定隐藏
-gui.hkb.show=§a显示
-gui.hkb.hide=§c隐藏
+hkb.gui.config_title=按键绑定隐藏
+hkb.gui.show=§a显示
+hkb.gui.hide=§c隐藏

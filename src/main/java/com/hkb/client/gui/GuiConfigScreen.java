@@ -2,7 +2,6 @@ package com.hkb.client.gui;
 
 import com.hkb.client.HKBMod;
 import net.minecraft.client.gui.GuiButton;
-import net.minecraft.client.gui.GuiControls;
 import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.resources.I18n;
 import net.minecraft.util.math.MathHelper;
@@ -13,7 +12,6 @@ import net.minecraftforge.fml.common.eventhandler.Event.Result;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
 
-import javax.annotation.Nonnull;
 import java.io.IOException;
 
 @SideOnly( Side.CLIENT )
@@ -30,7 +28,7 @@ final class GuiConfigScreen extends GuiScreen
 	@Override
 	public void initGui()
 	{
-		this.title = I18n.format( "gui.hkb.config_title" );
+		this.title = I18n.format( "hkb.gui.config_title" );
 		
 		final GuiButton cancel_btn = new GuiButton(
 			0,

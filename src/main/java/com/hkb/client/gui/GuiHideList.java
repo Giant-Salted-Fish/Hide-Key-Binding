@@ -1,11 +1,8 @@
 package com.hkb.client.gui;
 
 import com.google.common.collect.Sets;
-import com.hkb.client.HKBMod;
 import com.hkb.client.HKBModConfig;
-import com.kbp.client.KBPMod;
 import com.kbp.client.impl.IKeyBindingImpl;
-import com.mojang.realmsclient.util.Pair;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.gui.GuiButton;
@@ -14,11 +11,7 @@ import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.resources.I18n;
 import net.minecraft.client.settings.KeyBinding;
 import net.minecraft.util.math.MathHelper;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.fml.client.event.ConfigChangedEvent.OnConfigChangedEvent;
-import net.minecraftforge.fml.client.event.ConfigChangedEvent.PostConfigChangedEvent;
 import net.minecraftforge.fml.common.Loader;
-import net.minecraftforge.fml.common.eventhandler.Event.Result;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
 
@@ -188,7 +181,7 @@ final class GuiHideList extends GuiListExtended
 		private String __getButtonText()
 		{
 			final boolean is_hidden = GuiHideList.this.hidden.contains( this.kb_name );
-			return I18n.format( is_hidden ? "gui.hkb.hide" : "gui.hkb.show" );
+			return I18n.format( is_hidden ? "hkb.gui.hide" : "hkb.gui.show" );
 		}
 		
 		@Override
