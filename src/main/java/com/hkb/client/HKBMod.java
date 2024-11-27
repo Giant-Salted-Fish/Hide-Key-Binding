@@ -24,7 +24,7 @@ import java.util.Set;
 
 @Mod(
 	modid = HKBMod.MODID,
-	version = "1.12.2-1.0.0.0",
+	version = "1.0.0.1",
 	clientSideOnly = true,
 	updateJSON = "https://raw.githubusercontent.com/Giant-Salted-Fish/Hide-Key-Binding/1.12.2/update.json",
 	acceptedMinecraftVersions = "[1.12,1.13)",
