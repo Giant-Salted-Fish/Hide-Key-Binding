@@ -4,6 +4,7 @@
 	"description": "Allow player to hide unused key bindings via configuration.",
 	"url": "https://www.mcmod.cn/class/17243.html",
 	"logoFile": "logo.png",
+	"version": "${version}",
 	"authorList": [ "Giant_Salted_Fish" ],
 	"credits": "All code contributors."
 } ]

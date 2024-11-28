@@ -1,6 +1,7 @@
 package com.hkb.client;
 
 import com.google.common.collect.Sets;
+import com.kbp.client.impl.IKeyBindingImpl;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiControls;
 import net.minecraft.client.settings.GameSettings;
@@ -12,6 +13,7 @@ import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.common.config.Config;
 import net.minecraftforge.common.config.ConfigManager;
 import net.minecraftforge.fml.client.event.ConfigChangedEvent.OnConfigChangedEvent;
+import net.minecraftforge.fml.common.Loader;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.common.Mod.EventBusSubscriber;
 import net.minecraftforge.fml.common.ObfuscationReflectionHelper;
@@ -21,10 +23,11 @@ import java.lang.reflect.Field;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.function.Function;
 
 @Mod(
 	modid = HKBMod.MODID,
-	version = "1.0.0.2",
+	version = "1.0.0.3",
 	clientSideOnly = true,
 	updateJSON = "https://raw.githubusercontent.com/Giant-Salted-Fish/Hide-Key-Binding/1.12.2/update.json",
 	acceptedMinecraftVersions = "[1.12,1.13)",
@@ -120,10 +123,22 @@ public final class HKBMod
 			final GameSettings settings = mc.gameSettings;
 			ori_kb_arr = settings.keyBindings;
 			
+			final Function< KeyBinding, String > to_raw_name;
+			if ( Loader.isModLoaded( "key_binding_patch" ) )
+			{
+				to_raw_name = kb -> {
+					final String name = kb.getKeyDescription();
+					return IKeyBindingImpl.getShadowTarget( name ).orElse( name );
+				};
+			}
+			else {
+				to_raw_name = KeyBinding::getKeyDescription;
+			}
+			
 			final HashSet< String > hidden = Sets.newHashSet( HKBModConfig.hide_key_bindings );
 			settings.keyBindings = (
 				Arrays.stream( ori_kb_arr )
-				.filter( kb -> !hidden.contains( kb.getKeyDescription() ) )
+				.filter( kb -> !hidden.contains( to_raw_name.apply( kb ) ) )
 				.toArray( KeyBinding[]::new )
 			);
 			
