@@ -22,7 +22,6 @@ import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -34,8 +33,8 @@ final class GuiHideList extends GuiListExtended
 	private final IGuiListEntry[] entries;
 	private final int max_label_width;
 	
-	private final Set< String > hidden = Sets.newHashSet( HKBModConfig.hide_key_bindings );
-	private final Set< String > delta = new HashSet<>();
+	private final HashSet< String > hidden = Sets.newHashSet( HKBModConfig.hide_key_bindings );
+	private final HashSet< String > delta = new HashSet<>();
 	
 	GuiHideList( GuiConfigScreen parent, GuiButton save_all_btn )
 	{
@@ -133,8 +132,7 @@ final class GuiHideList extends GuiListExtended
 			boolean isSelected,
 			float partialTicks
 		) {
-			final Minecraft mc = GuiHideList.this.mc;
-			final FontRenderer font_renderer = mc.fontRenderer;
+			final FontRenderer font_renderer = GuiHideList.this.mc.fontRenderer;
 			final int pos_x = GuiHideList.this.parent.width / 2 - this.label_width / 2;
 			final int pos_y = y + slotHeight - font_renderer.FONT_HEIGHT - 1;
 			font_renderer.drawString( this.label_text, pos_x, pos_y, MathHelper.rgb( 255, 255, 255 ) );
@@ -220,11 +218,11 @@ final class GuiHideList extends GuiListExtended
 			{
 				this.hide_btn.playPressSound( mc.getSoundHandler() );
 				
-				final Set< String > hidden = GuiHideList.this.hidden;
+				final HashSet< String > hidden = GuiHideList.this.hidden;
 				if ( !hidden.add( this.kb_name ) ) {
 					hidden.remove( this.kb_name );
 				}
-				final Set< String > delta = GuiHideList.this.delta;
+				final HashSet< String > delta = GuiHideList.this.delta;
 				if ( !delta.add( this.kb_name ) ) {
 					delta.remove( this.kb_name );
 				}

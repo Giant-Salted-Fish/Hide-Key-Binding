@@ -1,6 +1,6 @@
 package com.hkb.client;
 
-import com.google.common.collect.Sets;
+import com.google.common.collect.ImmutableSet;
 import com.kbp.client.impl.IKeyBindingImpl;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiControls;
@@ -21,13 +21,12 @@ import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 
 import java.lang.reflect.Field;
 import java.util.Arrays;
-import java.util.HashSet;
 import java.util.Set;
 import java.util.function.Function;
 
 @Mod(
 	modid = HKBMod.MODID,
-	version = "1.0.0.3",
+	version = "1.0.0.4",
 	clientSideOnly = true,
 	updateJSON = "https://raw.githubusercontent.com/Giant-Salted-Fish/Hide-Key-Binding/1.12.2/update.json",
 	acceptedMinecraftVersions = "[1.12,1.13)",
@@ -84,7 +83,7 @@ public final class HKBMod
 		}
 		
 		final Minecraft mc = Minecraft.getMinecraft();
-		final Set< String > hidden = Sets.newHashSet( HKBModConfig.hide_key_bindings );
+		final ImmutableSet< String > hidden = ImmutableSet.copyOf( HKBModConfig.hide_key_bindings );
 		hidden_kb_arr = (
 			Arrays.stream( mc.gameSettings.keyBindings )
 			.filter( kb -> hidden.contains( kb.getKeyDescription() ) )
@@ -135,7 +134,7 @@ public final class HKBMod
 				to_raw_name = KeyBinding::getKeyDescription;
 			}
 			
-			final HashSet< String > hidden = Sets.newHashSet( HKBModConfig.hide_key_bindings );
+			final ImmutableSet< String > hidden = ImmutableSet.copyOf( HKBModConfig.hide_key_bindings );
 			settings.keyBindings = (
 				Arrays.stream( ori_kb_arr )
 				.filter( kb -> !hidden.contains( to_raw_name.apply( kb ) ) )
