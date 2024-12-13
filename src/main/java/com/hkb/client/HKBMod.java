@@ -2,55 +2,31 @@ package com.hkb.client;
 
 import com.google.common.collect.ImmutableSet;
 import com.kbp.client.impl.IKeyBindingImpl;
+import net.minecraft.client.GameSettings;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiControls;
-import net.minecraft.client.settings.GameSettings;
+import net.minecraft.client.gui.screen.SettingsScreen;
 import net.minecraft.client.settings.KeyBinding;
 import net.minecraftforge.client.event.GuiOpenEvent;
 import net.minecraftforge.client.event.GuiScreenEvent.InitGuiEvent;
 import net.minecraftforge.client.settings.IKeyConflictContext;
 import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.common.config.Config;
-import net.minecraftforge.common.config.ConfigManager;
-import net.minecraftforge.fml.client.event.ConfigChangedEvent.OnConfigChangedEvent;
-import net.minecraftforge.fml.common.Loader;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.ExtensionPoint;
+import net.minecraftforge.fml.ModList;
+import net.minecraftforge.fml.ModLoadingContext;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.common.Mod.EventBusSubscriber;
-import net.minecraftforge.fml.common.ObfuscationReflectionHelper;
-import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
+import net.minecraftforge.fml.config.ModConfig;
+import net.minecraftforge.fml.config.ModConfig.Type;
+import org.apache.commons.lang3.tuple.Pair;
 
-import java.lang.reflect.Field;
 import java.util.Arrays;
-import java.util.Set;
 import java.util.function.Function;
 
-@Mod(
-	modid = HKBMod.MODID,
-	version = "1.0.0.4",
-	clientSideOnly = true,
-	updateJSON = "https://raw.githubusercontent.com/Giant-Salted-Fish/Hide-Key-Binding/1.12.2/update.json",
-	acceptedMinecraftVersions = "[1.12,1.13)",
-	guiFactory = "com.hkb.client.gui.ConfigGuiFactory"
-)
+@Mod( "hide_key_binding" )
 @EventBusSubscriber
 public final class HKBMod
 {
-	public static final String MODID = "hide_key_binding";
-	
-	
-	// Internal implementations that should not be accessed by other mods.
-	private static final Field KeyBinding$KEYBIND_ARRAY = ObfuscationReflectionHelper.findField( KeyBinding.class, "field_151473_c" );
-	@SuppressWarnings( "unchecked" )
-	private static Set< String > getKeyBindArray()
-	{
-		try {
-			return ( Set< String > ) KeyBinding$KEYBIND_ARRAY.get( null );
-		}
-		catch ( IllegalAccessException e ) {
-			throw new RuntimeException( e );
-		}
-	}
-	
 	private static final IKeyConflictContext CONTEXT_HIDE = new IKeyConflictContext() {
 		@Override
 		public boolean isActive() {
@@ -82,11 +58,11 @@ public final class HKBMod
 			entry.kb.setKeyConflictContext( entry.cc );
 		}
 		
-		final Minecraft mc = Minecraft.getMinecraft();
-		final ImmutableSet< String > hidden = ImmutableSet.copyOf( HKBModConfig.hide_key_bindings );
+		final Minecraft mc = Minecraft.getInstance();
+		final ImmutableSet< String > hidden = ImmutableSet.copyOf( HKBModConfig.HIDE_KEY_BINDINGS.get() );
 		hidden_kb_arr = (
-			Arrays.stream( mc.gameSettings.keyBindings )
-			.filter( kb -> hidden.contains( kb.getKeyDescription() ) )
+			Arrays.stream( mc.options.keyMappings )
+			.filter( km -> hidden.contains( km.getName() ) )
 			.map( HiddenEntry::new )
 			.toArray( HiddenEntry[]::new )
 		);
@@ -99,6 +75,24 @@ public final class HKBMod
 	
 	public HKBMod()
 	{
+		// Make sure the mod being absent on the other network side does not
+		// cause the client to display the server as incompatible.
+		final ModLoadingContext load_ctx = ModLoadingContext.get();
+		load_ctx.registerExtensionPoint(
+			ExtensionPoint.DISPLAYTEST,
+			() -> Pair.of(
+				() -> "This is a client only mod.",
+				( remote_version_string, network_bool ) -> network_bool
+			)
+		);
+		
+		// Setup mod config settings.
+		load_ctx.registerConfig( Type.CLIENT, HKBModConfig.CONFIG_SPEC );
+		load_ctx.registerExtensionPoint(
+			ExtensionPoint.CONFIGGUIFACTORY,
+			() -> ( mc, screen ) -> new HKBConfigScreen( screen )
+		);
+		
 		MinecraftForge.EVENT_BUS.register( new Object() {
 			@SubscribeEvent
 			void onGuiOpen( GuiOpenEvent evt )
@@ -111,68 +105,51 @@ public final class HKBMod
 	
 	
 	private static KeyBinding[] ori_kb_arr;
-	private static String[] ori_categories;
 	
 	@SubscribeEvent
 	static void onInitGui$Pre( InitGuiEvent.Pre evt )
 	{
-		if ( evt.getGui() instanceof GuiControls )
+		if ( evt.getGui() instanceof SettingsScreen )
 		{
-			final Minecraft mc = Minecraft.getMinecraft();
-			final GameSettings settings = mc.gameSettings;
-			ori_kb_arr = settings.keyBindings;
+			final Minecraft mc = Minecraft.getInstance();
+			final GameSettings settings = mc.options;
+			ori_kb_arr = settings.keyMappings;
 			
 			final Function< KeyBinding, String > to_raw_name;
-			if ( Loader.isModLoaded( "key_binding_patch" ) )
+			if ( ModList.get().isLoaded( "key_binding_patch" ) )
 			{
 				to_raw_name = kb -> {
-					final String name = kb.getKeyDescription();
+					final String name = kb.getName();
 					return IKeyBindingImpl.getShadowTarget( name ).orElse( name );
 				};
 			}
 			else {
-				to_raw_name = KeyBinding::getKeyDescription;
+				to_raw_name = KeyBinding::getName;
 			}
 			
-			final ImmutableSet< String > hidden = ImmutableSet.copyOf( HKBModConfig.hide_key_bindings );
-			settings.keyBindings = (
+			final ImmutableSet< String > hidden = ImmutableSet.copyOf( HKBModConfig.HIDE_KEY_BINDINGS.get() );
+			settings.keyMappings = (
 				Arrays.stream( ori_kb_arr )
 				.filter( kb -> !hidden.contains( to_raw_name.apply( kb ) ) )
 				.toArray( KeyBinding[]::new )
 			);
-			
-			final Set< String > categories = getKeyBindArray();
-			ori_categories = categories.toArray( new String[ 0 ] );
-			categories.clear();
-			Arrays.stream( settings.keyBindings )
-				.map( KeyBinding::getKeyCategory )
-				.distinct()
-				.forEachOrdered( categories::add );
 		}
 	}
 	
 	@SubscribeEvent
 	static void onInitGui$Post( InitGuiEvent.Post evt )
 	{
-		if ( evt.getGui() instanceof GuiControls )
+		if ( evt.getGui() instanceof SettingsScreen )
 		{
-			final Minecraft mc = Minecraft.getMinecraft();
-			final GameSettings settings = mc.gameSettings;
-			settings.keyBindings = ori_kb_arr;
+			final Minecraft mc = Minecraft.getInstance();
+			final GameSettings settings = mc.options;
+			settings.keyMappings = ori_kb_arr;
 			ori_kb_arr = null;
-			
-			final Set< String > categories = getKeyBindArray();
-			categories.addAll( Arrays.asList( ori_categories ) );
 		}
 	}
 	
 	@SubscribeEvent
-	static void onConfigChanged( OnConfigChangedEvent evt )
-	{
-		if ( evt.getModID().equals( MODID ) )
-		{
-			ConfigManager.sync( MODID, Config.Type.INSTANCE );
-			__refreshAndDisableHidden();
-		}
+	static void onConfigReload( ModConfig.Reloading evt ) {
+		__refreshAndDisableHidden();
 	}
 }
