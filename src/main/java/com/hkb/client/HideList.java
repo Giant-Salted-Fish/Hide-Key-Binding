@@ -2,41 +2,36 @@ package com.hkb.client;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Sets;
-import com.kbp.client.impl.IKeyBindingImpl;
-import com.mojang.blaze3d.matrix.MatrixStack;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.FontRenderer;
-import net.minecraft.client.gui.IGuiEventListener;
-import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.client.gui.widget.button.Button;
-import net.minecraft.client.gui.widget.list.AbstractOptionList;
-import net.minecraft.client.gui.widget.list.KeyBindingList;
-import net.minecraft.client.gui.widget.list.KeyBindingList.Entry;
-import net.minecraft.client.settings.KeyBinding;
-import net.minecraft.util.text.Color;
-import net.minecraft.util.text.ITextComponent;
-import net.minecraft.util.text.TextFormatting;
-import net.minecraft.util.text.TranslationTextComponent;
+import com.kbp.client.impl.IKeyMappingImpl;
+import com.mojang.blaze3d.vertex.PoseStack;
+import net.minecraft.ChatFormatting;
+import net.minecraft.client.KeyMapping;
+import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.components.ContainerObjectSelectionList;
+import net.minecraft.client.gui.components.events.GuiEventListener;
+import net.minecraft.client.gui.narration.NarratableEntry;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.gui.screens.controls.KeyBindsList;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.TextColor;
+import net.minecraft.network.chat.TranslatableComponent;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
 import net.minecraftforge.fml.ModList;
+import org.jetbrains.annotations.NotNull;
 
-import javax.annotation.Nonnull;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 @OnlyIn( Dist.CLIENT )
-final class HideList extends AbstractOptionList< Entry >
+final class HideList extends ContainerObjectSelectionList< KeyBindsList.Entry >
 {
-	private static final int WHITE = Objects.requireNonNull( Color.fromLegacyFormat( TextFormatting.WHITE ) ).getValue();
+	private static final int WHITE = Objects.requireNonNull( TextColor.fromLegacyFormat( ChatFormatting.WHITE ) ).getValue();
 	
 	private final Button save_btn;
 	private final int max_label_width;
@@ -46,37 +41,37 @@ final class HideList extends AbstractOptionList< Entry >
 	
 	HideList( Screen parent, Button save_btn )
 	{
-		super( parent.getMinecraft(), parent.width + 45, parent.height, 23, parent.height - 32, 20 );
+		super( parent.getMinecraft(), parent.width + 45, parent.height, 20, parent.height - 32, 20 );
 		
 		this.save_btn = save_btn;
 		
-		Stream< KeyBinding > stream = Arrays.stream( this.minecraft.options.keyMappings );
+		var stream = Arrays.stream( this.minecraft.options.keyMappings );
 		if ( ModList.get().isLoaded( "key_binding_patch" ) ) {
-			stream = stream.filter( kb -> !IKeyBindingImpl.isShadowKeyBinding( kb ) );
+			stream = stream.filter( km -> !IKeyMappingImpl.isShadowKeyMapping( km ) );
 		}
-		final KeyBinding[] kb_arr = stream.toArray( KeyBinding[]::new );
+		final var km_arr = stream.toArray( KeyMapping[]::new );
 		
-		final Map< String, List< HideEntry > > grouped = Arrays.stream( kb_arr ).collect(
-			Collectors.groupingBy( KeyBinding::getCategory,
+		final var grouped = Arrays.stream( km_arr ).collect(
+			Collectors.groupingBy( KeyMapping::getCategory,
 				Collectors.mapping( HideEntry::new, Collectors.toList() )
 			)
 		);
 		
-		Arrays.stream( kb_arr )
-			.map( KeyBinding::getCategory )
+		Arrays.stream( km_arr )
+			.map( KeyMapping::getCategory )
 			.distinct()
 			.forEachOrdered( category -> {
-				final TranslationTextComponent label = new TranslationTextComponent( category );
+				final var label = new TranslatableComponent( category );
 				this.addEntry( new CategoryEntry( label ) );
 				grouped.get( category ).stream()
-					.sorted( Comparator.comparing( e -> e.label_text.getString() ) )
+					.sorted( Comparator.comparing( e -> e.label.getString() ))
 					.forEachOrdered( this::addEntry );
 			} );
 		
 		this.max_label_width = (
 			grouped.values().stream()
 			.flatMap( Collection::stream )
-			.map( e -> e.label_text )
+			.map( e -> e.label )
 			.mapToInt( this.minecraft.font::width )
 			.max()
 			.orElse( 0 )
@@ -101,76 +96,82 @@ final class HideList extends AbstractOptionList< Entry >
 	}
 	
 	
-	private final class CategoryEntry extends KeyBindingList.Entry
+	private final class CategoryEntry extends KeyBindsList.Entry
 	{
-		private final ITextComponent label;
-		private final int label_width;
+		private final Component label;
+		private final int width;
 		
-		private CategoryEntry( ITextComponent label )
+		private CategoryEntry( Component label )
 		{
 			this.label = label;
-			this.label_width = HideList.this.minecraft.font.width( label );
+			this.width = HideList.this.minecraft.font.width( label );
 		}
 		
 		@Override
 		public void render(
-			@Nonnull MatrixStack matrix,
+			@NotNull PoseStack pose,
 			int x,
 			int y,
-			int p_230432_4_,
-			int p_230432_5_,
+			int p_193891_,
+			int p_193892_,
 			int slot_height,
 			int mouse_x,
 			int mouse_y,
 			boolean is_selected,
 			float partial_ticks
 		) {
-			final Minecraft mc = HideList.this.minecraft;
-			final Screen screen = Objects.requireNonNull( mc.screen );
-			final FontRenderer font = mc.font;
-			final int pos_x = screen.width / 2 - this.label_width / 2;
-			final int pos_y = y + slot_height - font.lineHeight - 1;
-			font.draw( matrix, this.label, pos_x, pos_y, WHITE );
+			final var mc = HideList.this.minecraft;
+			final var screen = Objects.requireNonNull( mc.screen );
+			final var font = mc.font;
+			final var pos_x = screen.width / 2 - this.width / 2;
+			final var pos_y = y + slot_height - font.lineHeight - 1;
+			font.draw( pose, this.label, pos_x, pos_y, WHITE );
 		}
 		
 		@Override
-		public boolean changeFocus( boolean p_231049_1_ ) {
+		public boolean changeFocus( boolean p_94728_ ) {
 			return false;
 		}
 		
-		@Nonnull
+		@NotNull
 		@Override
-		public List< ? extends IGuiEventListener > children() {
-			return Collections.emptyList();
+		public List< ? extends GuiEventListener > children() {
+			return List.of();
+		}
+		
+		@NotNull
+		@Override
+		public List< ? extends NarratableEntry > narratables() {
+			return List.of();
 		}
 	}
 	
 	
-	private final ITextComponent text_show = new TranslationTextComponent( "hkb.gui.show" );
-	private final ITextComponent text_hide = new TranslationTextComponent( "hkb.gui.hide" );
-	private final class HideEntry extends KeyBindingList.Entry
+	private final Component text_show = new TranslatableComponent( "hkb.gui.show" );
+	private final Component text_hide = new TranslatableComponent( "hkb.gui.hide" );
+	private final class HideEntry extends KeyBindsList.Entry
 	{
-		private final String kb_name;
-		private final ITextComponent label_text;
+		private final String km_name;
+		private final Component label;
 		private final Button hide_btn;
 		
-		private HideEntry( KeyBinding kb )
+		private HideEntry( KeyMapping km )
 		{
-			final String name = kb.getName();
-			this.kb_name = name;
-			this.label_text = new TranslationTextComponent( name );
+			final var name = km.getName();
+			this.km_name = name;
+			this.label = new TranslatableComponent( name );
 			this.hide_btn = new Button(
 				0, 0,
 				60, 20,
 				this.__getButtonText(),
 				btn -> {
-					final HashSet< String > hidden = HideList.this.hidden;
-					if ( !hidden.add( this.kb_name ) ) {
-						hidden.remove( this.kb_name );
+					final var hidden = HideList.this.hidden;
+					if ( !hidden.add( this.km_name ) ) {
+						hidden.remove( this.km_name );
 					}
-					final HashSet< String > delta = HideList.this.delta;
-					if ( !delta.add( this.kb_name ) ) {
-						delta.remove( this.kb_name );
+					final var delta = HideList.this.delta;
+					if ( !delta.add( this.km_name ) ) {
+						delta.remove( this.km_name );
 					}
 					HideList.this.save_btn.active = !delta.isEmpty();
 					btn.setMessage( this.__getButtonText() );
@@ -178,50 +179,56 @@ final class HideList extends AbstractOptionList< Entry >
 			);
 		}
 		
-		private ITextComponent __getButtonText()
+		private Component __getButtonText()
 		{
-			final boolean is_hide = HideList.this.hidden.contains( this.kb_name );
-			return is_hide ? HideList.this.text_hide : HideList.this.text_show;
+			final var is_hidden = HideList.this.hidden.contains( this.km_name );
+			return is_hidden ? HideList.this.text_hide : HideList.this.text_show;
 		}
 		
 		@Override
 		public void render(
-			@Nonnull MatrixStack matrix,
+			@NotNull PoseStack pose,
 			int x,
 			int y,
-			int p_230432_4_,
-			int p_230432_5_,
+			int p_193926_,
+			int p_193927_,
 			int slot_height,
 			int mouse_x,
 			int mouse_y,
 			boolean is_selected,
 			float partial_ticks
 		) {
-			final FontRenderer font = HideList.this.minecraft.font;
-			final int pos_x = p_230432_4_ + 90 - HideList.this.max_label_width;
-			final int pos_y = y + slot_height / 2 - font.lineHeight / 2;
-			font.draw( matrix, this.label_text, pos_x, pos_y, WHITE );
+			final var font = HideList.this.minecraft.font;
+			final var pos_x = p_193926_ + 90 - HideList.this.max_label_width;
+			final var pos_y = y + slot_height / 2 - font.lineHeight / 2;
+			font.draw( pose, this.label, pos_x, pos_y, WHITE );
 			
-			final Button btn = this.hide_btn;
-			btn.x = p_230432_4_ + 105;
+			final var btn = this.hide_btn;
+			btn.x = p_193926_ + 105;
 			btn.y = y;
-			btn.render( matrix, mouse_x, mouse_y, partial_ticks );
+			btn.render( pose, mouse_x, mouse_y, partial_ticks );
 		}
 		
-		@Nonnull
+		@NotNull
 		@Override
-		public List< ? extends IGuiEventListener > children() {
-			return ImmutableList.of( this.hide_btn );
+		public List< ? extends GuiEventListener > children() {
+			return List.of( this.hide_btn );
+		}
+		
+		@NotNull
+		@Override
+		public List< ? extends NarratableEntry > narratables() {
+			return List.of();
 		}
 		
 		@Override
-		public boolean mouseClicked( double p_231044_1_, double p_231044_3_, int p_231044_5_ ) {
-			return this.hide_btn.mouseClicked( p_231044_1_, p_231044_3_, p_231044_5_ );
+		public boolean mouseClicked( double p_94695_, double p_94696_, int p_94697_ ) {
+			return this.hide_btn.mouseClicked( p_94695_, p_94696_, p_94697_ );
 		}
 		
 		@Override
-		public boolean mouseReleased( double p_231048_1_, double p_231048_3_, int p_231048_5_ ) {
-			return this.hide_btn.mouseReleased( p_231048_1_, p_231048_3_, p_231048_5_ );
+		public boolean mouseReleased( double p_94722_, double p_94723_, int p_94724_ ) {
+			return this.hide_btn.mouseReleased( p_94722_, p_94723_, p_94724_ );
 		}
 	}
 }

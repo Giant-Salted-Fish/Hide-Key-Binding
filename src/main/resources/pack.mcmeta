@@ -1,6 +1,8 @@
 {
 	"pack": {
-		"description": "Resource for Hide Key Binding",
-		"pack_format": 6
+		"description": "Resources for Hide Key Binding",
+		"pack_format": 9,
+		"forge:resource_pack_format": 8,
+		"forge:data_pack_format": 9
 	}
 }

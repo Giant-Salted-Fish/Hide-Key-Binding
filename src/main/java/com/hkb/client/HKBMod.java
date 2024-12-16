@@ -1,24 +1,23 @@
 package com.hkb.client;
 
 import com.google.common.collect.ImmutableSet;
-import com.kbp.client.impl.IKeyBindingImpl;
-import net.minecraft.client.GameSettings;
+import com.kbp.client.impl.IKeyMappingImpl;
+import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.screen.SettingsScreen;
-import net.minecraft.client.settings.KeyBinding;
-import net.minecraftforge.client.event.GuiOpenEvent;
-import net.minecraftforge.client.event.GuiScreenEvent.InitGuiEvent;
+import net.minecraft.client.gui.screens.controls.KeyBindsScreen;
+import net.minecraftforge.client.ConfigGuiHandler.ConfigGuiFactory;
+import net.minecraftforge.client.event.ScreenEvent.InitScreenEvent;
+import net.minecraftforge.client.event.ScreenOpenEvent;
 import net.minecraftforge.client.settings.IKeyConflictContext;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.ExtensionPoint;
+import net.minecraftforge.fml.IExtensionPoint.DisplayTest;
 import net.minecraftforge.fml.ModList;
 import net.minecraftforge.fml.ModLoadingContext;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.common.Mod.EventBusSubscriber;
-import net.minecraftforge.fml.config.ModConfig;
 import net.minecraftforge.fml.config.ModConfig.Type;
-import org.apache.commons.lang3.tuple.Pair;
+import net.minecraftforge.fml.event.config.ModConfigEvent;
 
 import java.util.Arrays;
 import java.util.function.Function;
@@ -39,39 +38,29 @@ public final class HKBMod
 		}
 	};
 	
-	private static final class HiddenEntry
-	{
-		private final KeyBinding kb;
-		private final IKeyConflictContext cc;
-		
-		private HiddenEntry( KeyBinding kb )
-		{
-			this.kb = kb;
-			this.cc = kb.getKeyConflictContext();
-		}
+	private record HiddenEntry( KeyMapping km, IKeyConflictContext cc ) {
 	}
 	private static HiddenEntry[] hidden_kb_arr = { };
 	
 	private static void __refreshAndDisableHidden()
 	{
-		for ( HiddenEntry entry : hidden_kb_arr ) {
-			entry.kb.setKeyConflictContext( entry.cc );
+		for ( var entry : hidden_kb_arr ) {
+			entry.km.setKeyConflictContext( entry.cc );
 		}
 		
-		final Minecraft mc = Minecraft.getInstance();
-		final ImmutableSet< String > hidden = ImmutableSet.copyOf( HKBModConfig.HIDE_KEY_BINDINGS.get() );
+		final var mc = Minecraft.getInstance();
+		final var hidden = ImmutableSet.copyOf( HKBModConfig.HIDE_KEY_BINDINGS.get() );
 		hidden_kb_arr = (
 			Arrays.stream( mc.options.keyMappings )
 			.filter( km -> hidden.contains( km.getName() ) )
-			.map( HiddenEntry::new )
+			.map( km -> new HiddenEntry( km, km.getKeyConflictContext() ) )
 			.toArray( HiddenEntry[]::new )
 		);
 		
-		for ( HiddenEntry entry : hidden_kb_arr ) {
-			entry.kb.setKeyConflictContext( CONTEXT_HIDE );
+		for ( var entry : hidden_kb_arr ) {
+			entry.km.setKeyConflictContext( CONTEXT_HIDE );
 		}
 	}
-	
 	
 	public HKBMod()
 	{
@@ -79,8 +68,8 @@ public final class HKBMod
 		// cause the client to display the server as incompatible.
 		final ModLoadingContext load_ctx = ModLoadingContext.get();
 		load_ctx.registerExtensionPoint(
-			ExtensionPoint.DISPLAYTEST,
-			() -> Pair.of(
+			DisplayTest.class,
+			() -> new DisplayTest(
 				() -> "This is a client only mod.",
 				( remote_version_string, network_bool ) -> network_bool
 			)
@@ -89,13 +78,13 @@ public final class HKBMod
 		// Setup mod config settings.
 		load_ctx.registerConfig( Type.CLIENT, HKBModConfig.CONFIG_SPEC );
 		load_ctx.registerExtensionPoint(
-			ExtensionPoint.CONFIGGUIFACTORY,
-			() -> ( mc, screen ) -> new HKBConfigScreen( screen )
+			ConfigGuiFactory.class,
+			() -> new ConfigGuiFactory( ( mc, screen ) -> new HKBConfigScreen( screen ) )
 		);
 		
 		MinecraftForge.EVENT_BUS.register( new Object() {
 			@SubscribeEvent
-			void onGuiOpen( GuiOpenEvent evt )
+			void onScreenOpen( ScreenOpenEvent evt )
 			{
 				__refreshAndDisableHidden();
 				MinecraftForge.EVENT_BUS.unregister( this );
@@ -104,52 +93,52 @@ public final class HKBMod
 	}
 	
 	
-	private static KeyBinding[] ori_kb_arr;
+	private static KeyMapping[] ori_km_arr;
 	
 	@SubscribeEvent
-	static void onInitGui$Pre( InitGuiEvent.Pre evt )
+	static void onInitScreen$Pre( InitScreenEvent.Pre evt )
 	{
-		if ( evt.getGui() instanceof SettingsScreen )
+		if ( evt.getScreen() instanceof KeyBindsScreen )
 		{
-			final Minecraft mc = Minecraft.getInstance();
-			final GameSettings settings = mc.options;
-			ori_kb_arr = settings.keyMappings;
+			final var mc = Minecraft.getInstance();
+			final var options = mc.options;
+			ori_km_arr = options.keyMappings;
 			
-			final Function< KeyBinding, String > to_raw_name;
+			final Function< KeyMapping, String > to_raw_name;
 			if ( ModList.get().isLoaded( "key_binding_patch" ) )
 			{
-				to_raw_name = kb -> {
-					final String name = kb.getName();
-					return IKeyBindingImpl.getShadowTarget( name ).orElse( name );
+				to_raw_name = km -> {
+					final var name = km.getName();
+					return IKeyMappingImpl.getShadowTarget( name ).orElse( name );
 				};
 			}
 			else {
-				to_raw_name = KeyBinding::getName;
+				to_raw_name = KeyMapping::getName;
 			}
 			
-			final ImmutableSet< String > hidden = ImmutableSet.copyOf( HKBModConfig.HIDE_KEY_BINDINGS.get() );
-			settings.keyMappings = (
-				Arrays.stream( ori_kb_arr )
-				.filter( kb -> !hidden.contains( to_raw_name.apply( kb ) ) )
-				.toArray( KeyBinding[]::new )
+			final var hidden = ImmutableSet.copyOf( HKBModConfig.HIDE_KEY_BINDINGS.get() );
+			options.keyMappings = (
+				Arrays.stream( ori_km_arr )
+				.filter( km -> !hidden.contains( to_raw_name.apply( km ) ) )
+				.toArray( KeyMapping[]::new )
 			);
 		}
 	}
 	
 	@SubscribeEvent
-	static void onInitGui$Post( InitGuiEvent.Post evt )
+	static void onInitScreen$Post( InitScreenEvent.Post evt )
 	{
-		if ( evt.getGui() instanceof SettingsScreen )
+		if ( evt.getScreen() instanceof KeyBindsScreen )
 		{
-			final Minecraft mc = Minecraft.getInstance();
-			final GameSettings settings = mc.options;
-			settings.keyMappings = ori_kb_arr;
-			ori_kb_arr = null;
+			final var mc = Minecraft.getInstance();
+			final var options = mc.options;
+			options.keyMappings = ori_km_arr;
+			ori_km_arr = null;
 		}
 	}
 	
 	@SubscribeEvent
-	static void onConfigReload( ModConfig.Reloading evt ) {
+	static void onConfigReload( ModConfigEvent.Reloading evt ) {
 		__refreshAndDisableHidden();
 	}
 }
