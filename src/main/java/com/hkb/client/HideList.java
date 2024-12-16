@@ -2,23 +2,25 @@ package com.hkb.client;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Sets;
+import com.hkb.client.HideList.Entry;
 import com.kbp.client.impl.IKeyMappingImpl;
-import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.KeyMapping;
+import net.minecraft.client.gui.ComponentPath;
+import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.ContainerObjectSelectionList;
 import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.client.gui.narration.NarratableEntry;
+import net.minecraft.client.gui.navigation.FocusNavigationEvent;
 import net.minecraft.client.gui.screens.Screen;
-import net.minecraft.client.gui.screens.controls.KeyBindsList;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.TextColor;
-import net.minecraft.network.chat.TranslatableComponent;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
 import net.minecraftforge.fml.ModList;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.Arrays;
 import java.util.Collection;
@@ -29,7 +31,7 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 
 @OnlyIn( Dist.CLIENT )
-final class HideList extends ContainerObjectSelectionList< KeyBindsList.Entry >
+final class HideList extends ContainerObjectSelectionList< Entry >
 {
 	private static final int WHITE = Objects.requireNonNull( TextColor.fromLegacyFormat( ChatFormatting.WHITE ) ).getValue();
 	
@@ -61,7 +63,7 @@ final class HideList extends ContainerObjectSelectionList< KeyBindsList.Entry >
 			.map( KeyMapping::getCategory )
 			.distinct()
 			.forEachOrdered( category -> {
-				final var label = new TranslatableComponent( category );
+				final var label = Component.translatable( category );
 				this.addEntry( new CategoryEntry( label ) );
 				grouped.get( category ).stream()
 					.sorted( Comparator.comparing( e -> e.label.getString() ))
@@ -96,7 +98,11 @@ final class HideList extends ContainerObjectSelectionList< KeyBindsList.Entry >
 	}
 	
 	
-	private final class CategoryEntry extends KeyBindsList.Entry
+	static abstract class Entry extends ContainerObjectSelectionList.Entry< Entry > {
+	}
+	
+	
+	private final class CategoryEntry extends Entry
 	{
 		private final Component label;
 		private final int width;
@@ -109,11 +115,11 @@ final class HideList extends ContainerObjectSelectionList< KeyBindsList.Entry >
 		
 		@Override
 		public void render(
-			@NotNull PoseStack pose,
+			@NotNull GuiGraphics graphics,
 			int x,
 			int y,
-			int p_193891_,
-			int p_193892_,
+			int p_281333_,
+			int p_282287_,
 			int slot_height,
 			int mouse_x,
 			int mouse_y,
@@ -125,12 +131,13 @@ final class HideList extends ContainerObjectSelectionList< KeyBindsList.Entry >
 			final var font = mc.font;
 			final var pos_x = screen.width / 2 - this.width / 2;
 			final var pos_y = y + slot_height - font.lineHeight - 1;
-			font.draw( pose, this.label, pos_x, pos_y, WHITE );
+			graphics.drawString( font, this.label, pos_x, pos_y, WHITE, false );
 		}
 		
+		@Nullable
 		@Override
-		public boolean changeFocus( boolean p_94728_ ) {
-			return false;
+		public ComponentPath nextFocusPath( @NotNull FocusNavigationEvent p_265672_ ) {
+			return null;
 		}
 		
 		@NotNull
@@ -147,9 +154,9 @@ final class HideList extends ContainerObjectSelectionList< KeyBindsList.Entry >
 	}
 	
 	
-	private final Component text_show = new TranslatableComponent( "hkb.gui.show" );
-	private final Component text_hide = new TranslatableComponent( "hkb.gui.hide" );
-	private final class HideEntry extends KeyBindsList.Entry
+	private final Component text_show = Component.translatable( "hkb.gui.show" );
+	private final Component text_hide = Component.translatable( "hkb.gui.hide" );
+	private final class HideEntry extends Entry
 	{
 		private final String km_name;
 		private final Component label;
@@ -159,12 +166,9 @@ final class HideList extends ContainerObjectSelectionList< KeyBindsList.Entry >
 		{
 			final var name = km.getName();
 			this.km_name = name;
-			this.label = new TranslatableComponent( name );
-			this.hide_btn = new Button(
-				0, 0,
-				60, 20,
-				this.__getButtonText(),
-				btn -> {
+			this.label = Component.translatable( name );
+			this.hide_btn = (
+				Button.builder( this.__getButtonText(), btn -> {
 					final var hidden = HideList.this.hidden;
 					if ( !hidden.add( this.km_name ) ) {
 						hidden.remove( this.km_name );
@@ -175,7 +179,9 @@ final class HideList extends ContainerObjectSelectionList< KeyBindsList.Entry >
 					}
 					HideList.this.save_btn.active = !delta.isEmpty();
 					btn.setMessage( this.__getButtonText() );
-				}
+				} )
+				.bounds( 0, 0, 60, 20 )
+				.build()
 			);
 		}
 		
@@ -187,11 +193,11 @@ final class HideList extends ContainerObjectSelectionList< KeyBindsList.Entry >
 		
 		@Override
 		public void render(
-			@NotNull PoseStack pose,
+			@NotNull GuiGraphics graphics,
 			int x,
 			int y,
-			int p_193926_,
-			int p_193927_,
+			int p_281373_,
+			int p_283433_,
 			int slot_height,
 			int mouse_x,
 			int mouse_y,
@@ -199,14 +205,14 @@ final class HideList extends ContainerObjectSelectionList< KeyBindsList.Entry >
 			float partial_ticks
 		) {
 			final var font = HideList.this.minecraft.font;
-			final var pos_x = p_193926_ + 90 - HideList.this.max_label_width;
+			final var pos_x = p_281373_ + 90 - HideList.this.max_label_width;
 			final var pos_y = y + slot_height / 2 - font.lineHeight / 2;
-			font.draw( pose, this.label, pos_x, pos_y, WHITE );
+			graphics.drawString( font, this.label, pos_x, pos_y, WHITE, false );
 			
 			final var btn = this.hide_btn;
-			btn.x = p_193926_ + 105;
-			btn.y = y;
-			btn.render( pose, mouse_x, mouse_y, partial_ticks );
+			btn.setX( p_281373_ + 105 );
+			btn.setY( y );
+			btn.render( graphics, mouse_x, mouse_y, partial_ticks );
 		}
 		
 		@NotNull
@@ -219,16 +225,6 @@ final class HideList extends ContainerObjectSelectionList< KeyBindsList.Entry >
 		@Override
 		public List< ? extends NarratableEntry > narratables() {
 			return List.of();
-		}
-		
-		@Override
-		public boolean mouseClicked( double p_94695_, double p_94696_, int p_94697_ ) {
-			return this.hide_btn.mouseClicked( p_94695_, p_94696_, p_94697_ );
-		}
-		
-		@Override
-		public boolean mouseReleased( double p_94722_, double p_94723_, int p_94724_ ) {
-			return this.hide_btn.mouseReleased( p_94722_, p_94723_, p_94724_ );
 		}
 	}
 }

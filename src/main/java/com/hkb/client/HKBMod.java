@@ -5,9 +5,8 @@ import com.kbp.client.impl.IKeyMappingImpl;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.controls.KeyBindsScreen;
-import net.minecraftforge.client.ConfigGuiHandler.ConfigGuiFactory;
-import net.minecraftforge.client.event.ScreenEvent.InitScreenEvent;
-import net.minecraftforge.client.event.ScreenOpenEvent;
+import net.minecraftforge.client.ConfigScreenHandler.ConfigScreenFactory;
+import net.minecraftforge.client.event.ScreenEvent;
 import net.minecraftforge.client.settings.IKeyConflictContext;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
@@ -78,13 +77,13 @@ public final class HKBMod
 		// Setup mod config settings.
 		load_ctx.registerConfig( Type.CLIENT, HKBModConfig.CONFIG_SPEC );
 		load_ctx.registerExtensionPoint(
-			ConfigGuiFactory.class,
-			() -> new ConfigGuiFactory( ( mc, screen ) -> new HKBConfigScreen( screen ) )
+			ConfigScreenFactory.class,
+			() -> new ConfigScreenFactory( ( mc, screen ) -> new HKBConfigScreen( screen ) )
 		);
 		
 		MinecraftForge.EVENT_BUS.register( new Object() {
 			@SubscribeEvent
-			void onScreenOpen( ScreenOpenEvent evt )
+			void onScreenOpen( ScreenEvent.Opening evt )
 			{
 				__refreshAndDisableHidden();
 				MinecraftForge.EVENT_BUS.unregister( this );
@@ -96,7 +95,7 @@ public final class HKBMod
 	private static KeyMapping[] ori_km_arr;
 	
 	@SubscribeEvent
-	static void onInitScreen$Pre( InitScreenEvent.Pre evt )
+	static void onScreen$Init( ScreenEvent.Init evt )
 	{
 		if ( evt.getScreen() instanceof KeyBindsScreen )
 		{
@@ -126,7 +125,7 @@ public final class HKBMod
 	}
 	
 	@SubscribeEvent
-	static void onInitScreen$Post( InitScreenEvent.Post evt )
+	static void onScreen$Close( ScreenEvent.Closing evt )
 	{
 		if ( evt.getScreen() instanceof KeyBindsScreen )
 		{
