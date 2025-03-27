@@ -95,7 +95,7 @@ public final class HKBMod
 	private static KeyMapping[] ori_km_arr;
 	
 	@SubscribeEvent
-	static void onScreen$Init( ScreenEvent.Init evt )
+	static void onScreen$Init( ScreenEvent.Init.Pre evt )
 	{
 		if ( evt.getScreen() instanceof KeyBindsScreen )
 		{
