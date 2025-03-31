@@ -17,6 +17,7 @@ import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.common.Mod.EventBusSubscriber;
 import net.minecraftforge.fml.config.ModConfig.Type;
 import net.minecraftforge.fml.event.config.ModConfigEvent;
+import net.minecraftforge.fml.javafmlmod.FMLModContainer;
 
 import java.util.Arrays;
 import java.util.function.Function;
@@ -89,6 +90,9 @@ public final class HKBMod
 				MinecraftForge.EVENT_BUS.unregister( this );
 			}
 		} );
+		
+		final var container = ( FMLModContainer ) load_ctx.getActiveContainer();
+		container.getEventBus().addListener( ( ModConfigEvent.Reloading evt ) -> __refreshAndDisableHidden() );
 	}
 	
 	
@@ -125,7 +129,7 @@ public final class HKBMod
 	}
 	
 	@SubscribeEvent
-	static void onScreen$Close( ScreenEvent.Closing evt )
+	static void onScreen$Close( ScreenEvent.Init.Post evt )
 	{
 		if ( evt.getScreen() instanceof KeyBindsScreen )
 		{
@@ -134,10 +138,5 @@ public final class HKBMod
 			options.keyMappings = ori_km_arr;
 			ori_km_arr = null;
 		}
-	}
-	
-	@SubscribeEvent
-	static void onConfigReload( ModConfigEvent.Reloading evt ) {
-		__refreshAndDisableHidden();
 	}
 }

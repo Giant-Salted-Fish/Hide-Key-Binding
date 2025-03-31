@@ -18,13 +18,19 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.TextColor;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
+import net.minecraftforge.fml.ModContainer;
 import net.minecraftforge.fml.ModList;
+import net.minecraftforge.fml.config.IConfigEvent;
+import net.minecraftforge.fml.config.ModConfig;
+import net.minecraftforge.fml.config.ModConfig.Type;
+import net.minecraftforge.fml.util.ObfuscationReflectionHelper;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
+import java.util.EnumMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
@@ -90,11 +96,26 @@ final class HideList extends ContainerObjectSelectionList< Entry >
 		return super.getRowWidth() + 32;
 	}
 	
+	
+	private static final ModConfig CONFIG;
+	static
+	{
+		final var container = ModList.get().getModContainerById( "hide_key_binding" ).orElseThrow();
+		final EnumMap< Type, ModConfig > configs = ObfuscationReflectionHelper.getPrivateValue( ModContainer.class, container, "configs" );
+		assert configs != null;
+		CONFIG = configs.get( Type.CLIENT );
+	}
 	void _applyConfigChange()
 	{
 		assert !this.delta.isEmpty();
 		HKBModConfig.HIDE_KEY_BINDINGS.set( ImmutableList.copyOf( this.hidden ) );
-		HKBModConfig.HIDE_KEY_BINDINGS.save();
+		
+		// I think this is a bug in Forge. Saving the config this way may not trigger the reload event.
+		if ( HKBModConfig.ENABLE_CUSTOM_CONFIG_RELOAD_EVENT.get() )
+		{
+			final var container = ModList.get().getModContainerById( "hide_key_binding" ).orElseThrow();
+			container.dispatchConfigEvent( IConfigEvent.reloading( CONFIG ) );
+		}
 	}
 	
 	
