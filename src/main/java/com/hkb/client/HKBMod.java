@@ -18,6 +18,7 @@ import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.common.Mod.EventBusSubscriber;
 import net.minecraftforge.fml.config.ModConfig;
 import net.minecraftforge.fml.config.ModConfig.Type;
+import net.minecraftforge.fml.javafmlmod.FMLModContainer;
 import org.apache.commons.lang3.tuple.Pair;
 
 import java.util.Arrays;
@@ -101,6 +102,9 @@ public final class HKBMod
 				MinecraftForge.EVENT_BUS.unregister( this );
 			}
 		} );
+		
+		final FMLModContainer container = ( FMLModContainer ) load_ctx.getActiveContainer();
+		container.getEventBus().addListener( ( ModConfig.Reloading evt ) -> __refreshAndDisableHidden() );
 	}
 	
 	
@@ -146,10 +150,5 @@ public final class HKBMod
 			settings.keyMappings = ori_kb_arr;
 			ori_kb_arr = null;
 		}
-	}
-	
-	@SubscribeEvent
-	static void onConfigReload( ModConfig.Reloading evt ) {
-		__refreshAndDisableHidden();
 	}
 }
